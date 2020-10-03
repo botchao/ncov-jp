@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>nCoV Japan Map</title>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.2/Chart.min.js"></script>
+  <script type="text/javascript" src="https://unpkg.com/japan-map-js@1.0.1/dist/jpmap.min.js"></script>
+  <script src="data.js"></script>
+  <style>
+    body {
+      background-color: #222222
+    }
+
+    #tooltip {
+      color: #222222; 
+      background-color: #ffdd00;
+      padding: 5px;
+      text-decoration:none;
+      position:relative;
+      display:none;
+    }
+  </style>
+</head>
+<body>
+  <div class="container-fluid">
+    <div class="row content">
+      <div class="row">
+        <div class="col-md-4">
+          <div class="panel panel-danger">
+            <div class="panel-heading">Last Updated Date</div>
+            <div class="panel-body">令和2年2月27日</div>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="panel panel-danger">
+            <div class="panel-heading">Total Number</div>
+            <div class="panel-body">
+              <div id="total-num"></div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="panel panel-danger">
+            <div class="panel-heading">Gender</div>
+            <div class="panel-body">
+              <canvas id="pieGender"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>    
+      <br>
+      <div class="row">
+        <div class="col-md-8">
+          <div class="panel panel-danger">
+            <div class="panel-heading">Date</div>
+            <div class="panel-body">
+              <canvas id="barDate"></canvas>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="panel panel-danger">
+            <div class="panel-heading">Age</div>
+            <div class="panel-body">
+              <canvas id="barAge"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <span id="text" style="display:inline-block; width: 1002px; color: #ffffff; background-color: #ff0000; text-align: center">令和2年2月27日版</span>
+  <span id="tooltip"></span>
+  <div id="my-map"></div>
+  <script>
+    function scale(xMax, xMin, yMax, yMin, yInput) {
+      const percent = (yInput - yMin) / (yMax - yMin);
+      const result = percent * (xMax - xMin) + xMin;
+      return result;
+    }
+
+    function getColorCode(target) {
+      const c = Math.round(255.0 - scale(0,255,0,70,target)).toString(16).padStart(2, "0");
+      return "#FF" + c + c;
+    }
+
+    document.getElementById("total-num").innerText = nCovData.length;
+
+    var tooltipSpan = document.getElementById('tooltip');
+    window.onmousemove = function (e) {
+        var x = e.clientX, y = e.clientY;
+        tooltipSpan.style.top = (y + 16) + 'px';
+        tooltipSpan.style.left = (x + 16) + 'px';
+    };
+
+    var areas = [];
+    for (var code = 1; code <= 47; code++) {
+      const num = (groupedByLocation[code]) ? groupedByLocation[code].length : 0;
+      areas.push({ "code":code, "color": getColorCode(num), "number": num });
+    }
+    // console.log(areas);
+
+    var d = new jpmap.japanMap(document.getElementById("my-map"), {
+      areas: areas,
+      hoverColor: "#ffdd00",
+      movesIslands : true,
+      borderLineColor: "#000000",
+      width: 1000,
+      onHover: function(data){
+        var tt = document.getElementById("tooltip");
+
+        if (data.area.number == 0) {
+          tt.innerHTML = (data.name);
+        } else {
+          tt.innerHTML = (data.name + " 感染者数: " + data.area.number);
+        }
+
+        tt.style = "display:block; position:fixed; overflow:hidden;";
+      },
+      onHoverOut: function(data) {
+        var tt = document.getElementById("tooltip");
+        tt.style = "display:none;";
+      }
+    });
+
+    var ctxBarAge = document.getElementById("barAge");
+    var barChartAge = new Chart(ctxBarAge, {
+      type: 'bar',
+      data: {
+        labels: Object.keys(groupedByAge),
+        datasets: [{
+          data: Object.keys(groupedByAge).map(e => groupedByAge[e].length),
+          backgroundColor: 'rgba(255, 99, 132, 0.2)',
+          borderColor: 'rgba(255,99,132,1)',
+          borderWidth: 1
+        }]
+      },
+      options: {
+        legend: {
+          display: false
+        },
+      }
+    });
+
+    var ctxBarDate = document.getElementById("barDate");
+    var barChartDate = new Chart(ctxBarDate, {
+      type: 'bar',
+      data: {
+        labels: Object.keys(groupedByDate),
+        datasets: [{
+          data: Object.keys(groupedByDate).map(e => groupedByDate[e].length),
+          backgroundColor: 'rgba(255, 99, 132, 0.2)',
+          borderColor: 'rgba(255,99,132,1)',
+          borderWidth: 1
+        }]
+      },
+      options: {
+        legend: {
+          display: false
+        },
+      }
+    });
+
+    var ctxPie = document.getElementById("pieGender");
+      var pieChart = new Chart(ctxPie, {
+        type: 'pie',
+        data: {
+          labels: Object.keys(groupedByGender),
+          datasets: [{
+            data: Object.keys(groupedByGender).map(e => groupedByGender[e].length),
+            backgroundColor: [
+              'rgba(255, 99, 132, 0.2)',
+              'rgba(54, 162, 235, 0.2)',
+              'rgba(255, 206, 86, 0.2)'
+            ],
+            borderColor: [
+              'rgba(255,99,132,1)',
+              'rgba(54, 162, 235, 1)',
+              'rgba(255, 206, 86, 1)'
+            ],
+            borderWidth: 1
+          }]
+        },
+        options: {
+          legend: {
+            display: false
+          },
+        }
+      });
+  </script>
+</body>
+</html>

@@ -1,1 +1,1 @@
-# ncov-jp
+# botchao.github.io
